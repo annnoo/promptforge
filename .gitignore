@@ -1,0 +1,15 @@
+/target/
+**/*.rs.bk
+*.bk
+Cargo.lock.bak
+
+# Editor and OS files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# PromptForge local test artifacts
+*.tmp
+/skills/test-install/

@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "id": "e81d77a2-70b9-478a-9ea2-2cb598df2411",
+  "title": "Application Security Audit Prompt",
+  "description": "Comprehensive security assessment prompt structure for cryptographic protocol and threat modeling review.",
+  "sections": [
+    {
+      "id": "18fbf3fa-d17e-400d-9b1f-7b7050304381",
+      "tag": "role",
+      "brief": "Senior application security engineer and penetration tester specializing in cloud-native Rust microservices.",
+      "refined": "Principal Security Architect and Cryptographic Systems Auditor with extensive experience evaluating zero-trust cloud topologies and memory-safe native runtimes.",
+      "locked": false,
+      "enabled": true
+    },
+    {
+      "id": "42643a65-3852-47d3-b1d5-bc4cf6cffca3",
+      "tag": "context",
+      "brief": "The target system is an asynchronous authentication service handling OAuth2 token issuance, session revocation, and mutual TLS communication between backend services.",
+      "locked": false,
+      "enabled": true
+    },
+    {
+      "id": "bb0ea332-9cb7-4581-9966-2ce96cb62394",
+      "tag": "objective",
+      "brief": "Conduct a rigorous security analysis to identify authentication bypass vulnerabilities, race conditions, timing attacks, and memory isolation flaws.",
+      "locked": false,
+      "enabled": true
+    },
+    {
+      "id": "b3e346b9-9cf4-4903-8815-581335759714",
+      "tag": "task",
+      "brief": "Analyze the token validation routine and secret storage lifecycle. Formulate concrete exploit scenarios for any identified weaknesses.",
+      "refined": "1. Analyze cryptographic token signature verification routines against key confusion and algorithm downgrade vectors.\n2. Audit stateful session cache lookups for time-of-check to time-of-use (TOCTOU) race conditions.\n3. Formulate reproducible proof-of-concept attack scenarios for each identified severity level.",
+      "locked": false,
+      "enabled": true
+    },
+    {
+      "id": "4955fe46-e5ce-4bb5-a3d8-ca5741870fa7",
+      "tag": "constraints",
+      "brief": "- Adhere strictly to OWASP ASVS Level 3 standards\n- Focus exclusively on realistic exploit pathways\n- Do not recommend proprietary commercial scanners\n- Categorize all findings using CVSS v3.1 scoring",
+      "locked": true,
+      "enabled": true
+    },
+    {
+      "id": "4b6c31bf-8ef4-436f-8703-9d47228807d8",
+      "tag": "output_format",
+      "brief": "Structured vulnerability report with Executive Summary, Findings Table (ID, Severity, CVSS, Impact), Technical Analysis per finding, and Remediations.",
+      "locked": false,
+      "enabled": true
+    }
+  ]
+}

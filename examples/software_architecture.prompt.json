@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "id": "c4afc344-05cf-4161-968f-61e2ff1bad0e",
+  "title": "Software Engineering Task",
+  "description": "Specialized prompt structure for software architecture, coding, and debugging tasks.",
+  "sections": [
+    {
+      "id": "efb3b79f-c60e-46eb-bb22-a810c69e94e3",
+      "tag": "role",
+      "brief": "Expert software engineer and systems architect.",
+      "refined": "Principal Systems Architect specializing in mission-critical, low-latency distributed systems and clean Rust architecture.",
+      "locked": false,
+      "enabled": true
+    },
+    {
+      "id": "de9f235c-6ad6-428c-9924-a571cbc0db8c",
+      "tag": "context",
+      "brief": "Current system background, architecture, and technology stack.",
+      "locked": false,
+      "enabled": true
+    },
+    {
+      "id": "1b7b2450-a840-4639-9e23-30fe16f60ece",
+      "tag": "objective",
+      "brief": "Primary goal and intended impact of this request.",
+      "locked": false,
+      "enabled": true
+    },
+    {
+      "id": "1d78b72f-23e2-4ede-a0ca-69b1a26b8a59",
+      "tag": "task",
+      "brief": "Detailed step-by-step task instructions.",
+      "locked": false,
+      "enabled": true
+    },
+    {
+      "id": "bef90ee0-3d90-430e-8278-64ce1d3b20e2",
+      "tag": "requirements",
+      "brief": "- Requirement 1\n- Requirement 2\n- Requirement 3",
+      "locked": false,
+      "enabled": true
+    },
+    {
+      "id": "8d95089f-6eb3-492a-a0d3-cfa91f904ff3",
+      "tag": "constraints",
+      "brief": "- Do not break backward compatibility\n- No third-party network dependencies\n- Keep memory footprint minimal",
+      "locked": false,
+      "enabled": true
+    },
+    {
+      "id": "78d66a73-3a47-4342-b381-20d9bf15b68b",
+      "tag": "acceptance_criteria",
+      "brief": "- Passes all automated unit tests\n- Adheres to clean code principles\n- Comprehensive documentation included",
+      "locked": false,
+      "enabled": true
+    }
+  ]
+}

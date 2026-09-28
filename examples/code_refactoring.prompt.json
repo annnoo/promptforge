@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "id": "76d49419-f538-4e3f-b88a-211ba6f73449",
+  "title": "Legacy Code Modernization Prompt",
+  "description": "Targeted refactoring workflow to eliminate technical debt, enhance type safety, and decouple domain logic from I/O.",
+  "sections": [
+    {
+      "id": "5fae5ff1-d64e-4f0e-be40-0aa8d58c89dc",
+      "tag": "role",
+      "brief": "Staff Rust Engineer specializing in zero-cost abstractions, idiomatic refactoring, and strict type-driven design.",
+      "locked": false,
+      "enabled": true
+    },
+    {
+      "id": "e609ca08-e04f-4d3f-a2e6-a81d4b684bc9",
+      "tag": "context",
+      "brief": "A monolithic module in an event processing engine currently mixes networking sockets, raw byte parsing, and database transactions into a single 2,000-line file.",
+      "locked": false,
+      "enabled": true
+    },
+    {
+      "id": "060d40e1-0bbd-4676-9214-e598ca12803b",
+      "tag": "task",
+      "brief": "Deconstruct the monolithic module into clean hexagonal architecture layers: Domain Entity, Repository Port, and Inbound Transport Adapter.",
+      "locked": false,
+      "enabled": true
+    },
+    {
+      "id": "3be5cf76-e3d1-447a-8b94-0cfb3f9ff790",
+      "tag": "requirements",
+      "brief": "- Encapsulate domain rules strictly in pure functions without async runtimes\n- Use strong newtypes instead of raw primitive types (e.g., UserId, EventSequence)\n- Introduce dependency injection via Rust traits for external I/O\n- Maintain 100% test coverage for state transition logic",
+      "locked": false,
+      "enabled": true
+    },
+    {
+      "id": "18f08a46-ec08-410a-8bf8-d3e9c6a1e3ca",
+      "tag": "constraints",
+      "brief": "- Zero unsafe code blocks permitted\n- Zero performance regression on parsing hot paths\n- Retain public crate API contracts intact for downstream consumers",
+      "locked": true,
+      "enabled": true
+    },
+    {
+      "id": "08f36c4b-6ea9-482a-a925-5028f8fbf5e1",
+      "tag": "acceptance_criteria",
+      "brief": "- cargo clippy passes with zero warnings with -D warnings\n- Criterion benchmarks demonstrate zero allocation increase on hot paths\n- Complete rustdoc documentation with executable doc-tests",
+      "locked": false,
+      "enabled": true
+    }
+  ]
+}

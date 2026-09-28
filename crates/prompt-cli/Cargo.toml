@@ -1,0 +1,27 @@
+[package]
+name = "prompt-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "promptforge"
+path = "src/main.rs"
+
+[dependencies]
+prompt-core.workspace = true
+prompt-application.workspace = true
+prompt-persistence.workspace = true
+prompt-refinement.workspace = true
+prompt-tui.workspace = true
+prompt-gui.workspace = true
+clap.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+uuid.workspace = true
+quick-xml.workspace = true

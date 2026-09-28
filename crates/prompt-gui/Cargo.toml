@@ -1,0 +1,17 @@
+[package]
+name = "prompt-gui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+prompt-core.workspace = true
+prompt-application.workspace = true
+prompt-persistence.workspace = true
+prompt-refinement.workspace = true
+eframe.workspace = true
+arboard.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+uuid.workspace = true
