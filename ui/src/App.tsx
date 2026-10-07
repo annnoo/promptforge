@@ -26,6 +26,10 @@ import { DiffReviewModal } from './components/DiffReviewModal';
 import { SettingsModal } from './components/SettingsModal';
 import { NewDocumentModal } from './components/NewDocumentModal';
 import { CreateTypeModal } from './components/CreateTypeModal';
+import { ExportSkillModal } from './components/ExportSkillModal';
+import { ImportPromptModal } from './components/ImportPromptModal';
+import { PromptLibraryModal } from './components/PromptLibraryModal';
+import { TagBadge } from './components/TagBadge';
 
 interface ToastInfo {
   id: number;
@@ -45,6 +49,9 @@ export const App: React.FC = () => {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isNewDocModalOpen, setIsNewDocModalOpen] = useState(false);
   const [isCreateTypeModalOpen, setIsCreateTypeModalOpen] = useState(false);
+  const [isExportSkillModalOpen, setIsExportSkillModalOpen] = useState(false);
+  const [isImportPromptModalOpen, setIsImportPromptModalOpen] = useState(false);
+  const [isPromptLibraryModalOpen, setIsPromptLibraryModalOpen] = useState(false);
   const [editingType, setEditingType] = useState<SectionType | null>(null);
 
   // Filter sections by tag on canvas
@@ -230,6 +237,32 @@ export const App: React.FC = () => {
     [showToast]
   );
 
+  const handleTagColorChange = useCallback(
+    async (tag: string, color: string) => {
+      try {
+        const newConfig = await api.setTagColor(tag, color);
+        setConfig(newConfig);
+        showToast(`Updated color for #${tag}`, 'success');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        showToast('Failed to save tag color: ' + msg, 'error');
+      }
+    },
+    [showToast]
+  );
+
+  const handleSaveCurrentToLibrary = useCallback(async () => {
+    if (!docState) return;
+    try {
+      const summary = await api.saveToLibrary();
+      showToast(`Saved "${summary.title}" to Library`, 'success');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast('Save to Library failed: ' + msg, 'error');
+      throw err;
+    }
+  }, [docState, showToast]);
+
   // Existing folders list
   const existingFolders = useMemo(() => {
     const set = new Set<string>();
@@ -333,6 +366,9 @@ export const App: React.FC = () => {
         onSaveAs={handleSaveAs}
         onUndo={() => exec({ type: 'Undo' })}
         onRedo={() => exec({ type: 'Redo' })}
+        onOpenLibrary={() => setIsPromptLibraryModalOpen(true)}
+        onOpenImport={() => setIsImportPromptModalOpen(true)}
+        onOpenExportSkill={() => setIsExportSkillModalOpen(true)}
         onOpenRefine={() => setIsRefineModalOpen(true)}
         onOpenReview={() => setIsDiffReviewModalOpen(true)}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
@@ -345,6 +381,8 @@ export const App: React.FC = () => {
           sectionTypes={sectionTypes}
           templates={templates}
           currentSections={sections}
+          customColors={config?.tag_colors}
+          onTagColorChange={handleTagColorChange}
           onInsertType={handleInsertType}
           onOpenCreateType={() => {
             setEditingType(null);
@@ -373,32 +411,30 @@ export const App: React.FC = () => {
 
               {/* Tag filters for document sections */}
               {docSectionTags.length > 0 && (
-                <div className="flex items-center gap-1 pl-2 border-l border-slate-800">
+                <div className="flex items-center gap-1.5 pl-2 border-l border-slate-800">
                   <Tag className="w-3 h-3 text-slate-500" />
                   <button
                     onClick={() => setSelectedCanvasTag(null)}
-                    className={`px-2 py-0.5 rounded text-[10px] transition ${
+                    className={`px-2 py-0.5 rounded text-[10px] border transition ${
                       selectedCanvasTag === null
-                        ? 'bg-slate-800 text-slate-200 font-semibold'
-                        : 'text-slate-400 hover:text-slate-200'
+                        ? 'bg-zinc-800 text-zinc-100 border-zinc-600 font-semibold'
+                        : 'text-zinc-400 hover:text-zinc-200 bg-zinc-900 border-zinc-800'
                     }`}
                   >
                     All
                   </button>
                   {docSectionTags.map((tag) => (
-                    <button
+                    <TagBadge
                       key={tag}
+                      tag={tag}
+                      size="xs"
+                      customColors={config?.tag_colors}
+                      isActive={selectedCanvasTag === tag}
                       onClick={() =>
                         setSelectedCanvasTag(selectedCanvasTag === tag ? null : tag)
                       }
-                      className={`px-2 py-0.5 rounded text-[10px] transition ${
-                        selectedCanvasTag === tag
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      #{tag}
-                    </button>
+                      onColorChange={(colorId) => handleTagColorChange(tag, colorId)}
+                    />
                   ))}
                 </div>
               )}
@@ -457,6 +493,8 @@ export const App: React.FC = () => {
                     index={actualIndex}
                     totalSections={sections.length}
                     hasPendingChange={pendingMap.has(section.id)}
+                    customColors={config?.tag_colors}
+                    onTagColorChange={handleTagColorChange}
                     onUpdateBrief={(id, text) => exec({ type: 'UpdateBrief', id, text })}
                     onRenameTag={(id, tag) => exec({ type: 'RenameSection', id, tag })}
                     onUpdateTags={(id, tags) => exec({ type: 'UpdateTags', id, tags })}
@@ -524,6 +562,33 @@ export const App: React.FC = () => {
         onClose={() => setIsNewDocModalOpen(false)}
         templates={templates}
         onCreate={handleCreateDocument}
+      />
+
+      <ExportSkillModal
+        isOpen={isExportSkillModalOpen}
+        onClose={() => setIsExportSkillModalOpen(false)}
+        defaultTitle={docState?.document.title || ''}
+        defaultDescription={docState?.document.description || ''}
+      />
+
+      <ImportPromptModal
+        isOpen={isImportPromptModalOpen}
+        onClose={() => setIsImportPromptModalOpen(false)}
+        onImportSuccess={(newState) => {
+          setDocState(newState);
+          showToast('Prompt imported successfully', 'success');
+        }}
+      />
+
+      <PromptLibraryModal
+        isOpen={isPromptLibraryModalOpen}
+        onClose={() => setIsPromptLibraryModalOpen(false)}
+        onLoadPrompt={(newState) => {
+          setDocState(newState);
+          showToast(`Opened "${newState.document.title}" from Library`, 'success');
+        }}
+        onSaveCurrentToLibrary={handleSaveCurrentToLibrary}
+        customColors={config?.tag_colors}
       />
 
       {/* 4. Global Toast Notifications */}

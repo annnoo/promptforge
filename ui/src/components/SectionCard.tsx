@@ -13,17 +13,19 @@ import {
   RotateCcw,
   Edit2,
   Plus,
-  X,
   CheckCircle2,
 } from 'lucide-react';
 import type { PromptSection, DiffLine } from '../types';
 import { api } from '../api';
+import { TagBadge } from './TagBadge';
 
 interface SectionCardProps {
   section: PromptSection;
   index: number;
   totalSections: number;
   hasPendingChange: boolean;
+  customColors?: Record<string, string>;
+  onTagColorChange?: (tag: string, color: string) => void;
   onUpdateBrief: (id: string, text: string) => void;
   onRenameTag: (id: string, tag: string) => void;
   onUpdateTags: (id: string, tags: string[]) => void;
@@ -41,6 +43,8 @@ export const SectionCard: React.FC<SectionCardProps> = ({
   index,
   totalSections,
   hasPendingChange,
+  customColors,
+  onTagColorChange,
   onUpdateBrief,
   onRenameTag,
   onUpdateTags,
@@ -178,21 +182,18 @@ export const SectionCard: React.FC<SectionCardProps> = ({
           <div className="flex items-center gap-1 flex-wrap">
             {section.tags &&
               section.tags.map((t) => (
-                <span
+                <TagBadge
                   key={t}
-                  className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700/80 text-[10px]"
-                >
-                  <span>#{t}</span>
-                  {!section.locked && (
-                    <button
-                      onClick={() => handleRemoveTag(t)}
-                      className="hover:text-red-400 ml-0.5"
-                      title={`Remove tag #${t}`}
-                    >
-                      <X className="w-2.5 h-2.5" />
-                    </button>
-                  )}
-                </span>
+                  tag={t}
+                  size="xs"
+                  customColors={customColors}
+                  onRemove={!section.locked ? () => handleRemoveTag(t) : undefined}
+                  onColorChange={
+                    onTagColorChange
+                      ? (colorId) => onTagColorChange(t, colorId)
+                      : undefined
+                  }
+                />
               ))}
 
             {/* Add tag button / input */}

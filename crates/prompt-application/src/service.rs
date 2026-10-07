@@ -123,6 +123,19 @@ impl ApplicationService {
         Ok(())
     }
 
+    /// Appends multiple sections to the active document with a history checkpoint.
+    pub fn append_sections(&mut self, sections: Vec<PromptSection>) -> Result<(), ApplicationError> {
+        if sections.is_empty() {
+            return Ok(());
+        }
+        self.commit_checkpoint();
+        for section in sections {
+            self.state.document.add_section(section)?;
+        }
+        self.state.dirty = true;
+        Ok(())
+    }
+
     /// Executes a command against the application state.
     pub fn execute(&mut self, command: Command) -> Result<(), ApplicationError> {
         match command {
@@ -530,4 +543,22 @@ mod tests {
             vec!["critical".to_string(), "backend".to_string()]
         );
     }
+
+    #[test]
+    fn test_append_sections() {
+        let mut service = ApplicationService::default();
+        let s1 = PromptSection::new("role", "Architect").unwrap();
+        let s2 = PromptSection::new("task", "Build Engine").unwrap();
+        service.append_sections(vec![s1, s2]).unwrap();
+
+        assert_eq!(service.document().sections.len(), 2);
+        assert_eq!(service.document().sections[0].tag, "role");
+        assert_eq!(service.document().sections[1].tag, "task");
+        assert!(service.state().dirty);
+
+        // Can undo the whole append
+        service.undo();
+        assert_eq!(service.document().sections.len(), 0);
+    }
 }
+

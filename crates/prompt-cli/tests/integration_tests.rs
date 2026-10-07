@@ -582,3 +582,103 @@ fn test_clean_export_valid_xml_parseable() {
 
     assert!(count >= 5, "Expected at least 5 XML elements parsed, got {}", count);
 }
+
+// 19. Agent skill export generation and persistence
+#[test]
+fn test_skill_export_generation_and_persistence() {
+    let mut doc = PromptDocument::new("Rust Security Auditor", "Audits code for memory hazards.");
+    let s1 = PromptSection::new("role", "Senior Security Auditor").unwrap();
+    let s2 = PromptSection::new("task", "Find undefined behavior").unwrap();
+    doc.add_section(s1).unwrap();
+    doc.add_section(s2).unwrap();
+
+    let temp_dir = tempdir().unwrap();
+    let skill_path = temp_dir.path().join("SKILL.md");
+
+    prompt_persistence::export_skill(
+        &skill_path,
+        &doc,
+        prompt_core::SkillExportOptions::default(),
+    )
+    .unwrap();
+
+    let content = std::fs::read_to_string(&skill_path).unwrap();
+    assert!(content.starts_with("---\nname: rust-security-auditor\n"));
+    assert!(content.contains("description: Audits code for memory hazards."));
+    assert!(content.contains("# Rust Security Auditor"));
+    assert!(content.contains("<role>"));
+    assert!(content.contains("Senior Security Auditor"));
+}
+
+// 20. Multi-format prompt import (XML, Markdown, Agent Skill, JSON)
+#[test]
+fn test_multi_format_prompt_import() {
+    // A. XML Import
+    let xml = "<prompt><role>DB Admin</role><task>Optimize indexes</task></prompt>";
+    let imported_xml = prompt_core::import_prompt_from_text(xml).unwrap();
+    assert_eq!(imported_xml.format, prompt_core::ImportFormat::Xml);
+    assert_eq!(imported_xml.sections.len(), 2);
+    assert_eq!(imported_xml.sections[0].tag, "role");
+
+    // B. Markdown Import
+    let md = "# Code Reviewer\nReviewing code.\n\n## Role\nPrincipal Engineer\n\n## Constraints\nNo unwraps";
+    let imported_md = prompt_core::import_prompt_from_text(md).unwrap();
+    assert_eq!(imported_md.format, prompt_core::ImportFormat::Markdown);
+    assert_eq!(imported_md.title, "Code Reviewer");
+    assert_eq!(imported_md.sections.len(), 2);
+
+    // C. Agent Skill Import
+    let skill = "---\nname: my-skill\ndescription: Test skill\n---\n# My Skill\n\n```xml\n<prompt><task>Run benchmarks</task></prompt>\n```";
+    let imported_skill = prompt_core::import_prompt_from_text(skill).unwrap();
+    assert_eq!(imported_skill.format, prompt_core::ImportFormat::Skill);
+    assert_eq!(imported_skill.sections[0].tag, "task");
+    assert_eq!(imported_skill.sections[0].brief, "Run benchmarks");
+}
+
+// 21. Prompt Library roundtrip save, list, load, and delete
+#[test]
+fn test_prompt_library_save_load_delete_roundtrip() {
+    let temp_dir = tempdir().unwrap();
+    let mut doc = PromptDocument::new("Refactoring Assistant", "Assists in cleaning code.");
+    let mut sec = PromptSection::new("role", "Refactoring Expert").unwrap();
+    sec.tags = vec!["clean-code".to_string(), "refactor".to_string()];
+    doc.add_section(sec).unwrap();
+
+    // Save to library
+    let summary = prompt_persistence::save_to_library(temp_dir.path(), &doc).unwrap();
+    assert_eq!(summary.title, "Refactoring Assistant");
+    assert_eq!(summary.tags, vec!["clean-code".to_string(), "refactor".to_string()]);
+
+    // List library
+    let list = prompt_persistence::list_saved_prompts(temp_dir.path()).unwrap();
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0].id, doc.id.to_string());
+
+    // Load from library
+    let loaded = prompt_persistence::load_from_library(temp_dir.path(), &doc.id.to_string()).unwrap();
+    assert_eq!(loaded.id, doc.id);
+    assert_eq!(loaded.title, doc.title);
+
+    // Delete from library
+    let deleted = prompt_persistence::delete_from_library(temp_dir.path(), &doc.id.to_string()).unwrap();
+    assert!(deleted);
+    let list_after = prompt_persistence::list_saved_prompts(temp_dir.path()).unwrap();
+    assert_eq!(list_after.len(), 0);
+}
+
+// 22. Tag color configuration persistence
+#[test]
+fn test_tag_colors_configuration_persistence() {
+    let temp_dir = tempdir().unwrap();
+    let config_path = temp_dir.path().join("config.json");
+
+    let mut cfg = AppConfig::default();
+    cfg.set_tag_color("persona".to_string(), "violet".to_string());
+    cfg.set_tag_color("security".to_string(), "rose".to_string());
+    cfg.save_to(&config_path).unwrap();
+
+    let loaded = AppConfig::load_from(&config_path).unwrap();
+    assert_eq!(loaded.tag_colors.get("persona").unwrap(), "violet");
+    assert_eq!(loaded.tag_colors.get("security").unwrap(), "rose");
+}
+

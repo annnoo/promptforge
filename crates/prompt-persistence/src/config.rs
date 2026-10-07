@@ -35,6 +35,8 @@ impl Default for OpenAiCompatibleConfig {
 
 use prompt_core::{get_builtin_section_types, SectionType};
 
+use std::collections::HashMap;
+
 /// Persistent user configuration for PromptForge.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -45,6 +47,8 @@ pub struct AppConfig {
     pub theme: String,
     #[serde(default)]
     pub custom_types: Vec<SectionType>,
+    #[serde(default)]
+    pub tag_colors: HashMap<String, String>,
 }
 
 fn default_theme() -> String {
@@ -59,6 +63,7 @@ impl Default for AppConfig {
             recent_files: Vec::new(),
             theme: default_theme(),
             custom_types: Vec::new(),
+            tag_colors: HashMap::new(),
         }
     }
 }
@@ -156,6 +161,21 @@ impl AppConfig {
         } else {
             false
         }
+    }
+
+    /// Returns the standard directory for saved library prompts (`~/.config/promptforge/library`).
+    pub fn library_dir() -> Option<PathBuf> {
+        Self::config_dir().map(|dir| dir.join("library"))
+    }
+
+    /// Sets a customized color for a tag name.
+    pub fn set_tag_color(&mut self, tag: String, color: String) {
+        self.tag_colors.insert(tag, color);
+    }
+
+    /// Removes a custom color mapping for a tag name.
+    pub fn remove_tag_color(&mut self, tag: &str) {
+        self.tag_colors.remove(tag);
     }
 }
 

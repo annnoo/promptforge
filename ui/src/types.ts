@@ -85,6 +85,33 @@ export interface AppConfig {
   recent_files: string[];
   theme: string;
   custom_types?: SectionType[];
+  tag_colors?: Record<string, string>;
+}
+
+export type ImportFormat = 'json' | 'xml' | 'skill' | 'markdown' | 'plain_text';
+
+export interface ImportPreviewDto {
+  format: ImportFormat;
+  title: string;
+  description: string;
+  section_count: number;
+  sections: PromptSection[];
+}
+
+export interface ImportFileContent {
+  path: string;
+  file_name: string;
+  content: string;
+}
+
+export interface SavedPromptSummary {
+  id: string;
+  title: string;
+  description: string;
+  section_count: number;
+  tags: string[];
+  file_path: string;
+  updated_at: string;
 }
 
 export type DiffTag = 'Equal' | 'Delete' | 'Insert';

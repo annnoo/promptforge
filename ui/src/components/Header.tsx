@@ -11,6 +11,9 @@ import {
   Check,
   AlertCircle,
   Clock,
+  BookOpen,
+  Upload,
+  Share2,
 } from 'lucide-react';
 import type { DocumentStateDto } from '../types';
 
@@ -24,6 +27,9 @@ interface HeaderProps {
   onSaveAs: () => void;
   onUndo: () => void;
   onRedo: () => void;
+  onOpenLibrary: () => void;
+  onOpenImport: () => void;
+  onOpenExportSkill: () => void;
   onOpenRefine: () => void;
   onOpenReview: () => void;
   onOpenSettings: () => void;
@@ -39,6 +45,9 @@ export const Header: React.FC<HeaderProps> = ({
   onSaveAs,
   onUndo,
   onRedo,
+  onOpenLibrary,
+  onOpenImport,
+  onOpenExportSkill,
   onOpenRefine,
   onOpenReview,
   onOpenSettings,
@@ -229,6 +238,33 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-[10px]">As</span>
           </button>
         </div>
+
+        <button
+          onClick={onOpenLibrary}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700/60 transition"
+          title="Open Prompt Library"
+        >
+          <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="hidden md:inline">Library</span>
+        </button>
+
+        <button
+          onClick={onOpenImport}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700/60 transition"
+          title="Import Prompt (XML, Markdown, JSON, Skill)"
+        >
+          <Upload className="w-3.5 h-3.5 text-blue-400" />
+          <span className="hidden md:inline">Import</span>
+        </button>
+
+        <button
+          onClick={onOpenExportSkill}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700/60 transition"
+          title="Export prompt as Agent Skill (SKILL.md)"
+        >
+          <Share2 className="w-3.5 h-3.5 text-violet-400" />
+          <span className="hidden md:inline">Skill</span>
+        </button>
 
         {/* Review Changes button (if pending) */}
         {pendingCount > 0 && (

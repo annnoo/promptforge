@@ -56,6 +56,17 @@ pub fn run_gui(initial_file: Option<PathBuf>) -> anyhow::Result<()> {
             pick_save_file,
             export_xml_to_file,
             compute_diff,
+            set_tag_color,
+            generate_skill_content,
+            export_skill_to_file,
+            pick_save_skill_file,
+            parse_import_preview,
+            import_prompt_content,
+            pick_import_file,
+            list_library_prompts,
+            save_to_library,
+            load_from_library,
+            delete_from_library,
         ])
         .run(tauri::generate_context!())
         .map_err(|e| anyhow::anyhow!("Tauri runtime error: {e}"))

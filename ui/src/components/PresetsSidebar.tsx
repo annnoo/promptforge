@@ -16,11 +16,14 @@ import {
   Sparkles,
 } from 'lucide-react';
 import type { SectionType, StarterTemplate, PromptSection } from '../types';
+import { TagBadge } from './TagBadge';
 
 interface PresetsSidebarProps {
   sectionTypes: SectionType[];
   templates: StarterTemplate[];
   currentSections: PromptSection[];
+  customColors?: Record<string, string>;
+  onTagColorChange?: (tag: string, color: string) => void;
   onInsertType: (type: SectionType) => void;
   onOpenCreateType: () => void;
   onEditType: (type: SectionType) => void;
@@ -33,6 +36,8 @@ export const PresetsSidebar: React.FC<PresetsSidebarProps> = ({
   sectionTypes,
   templates,
   currentSections,
+  customColors,
+  onTagColorChange,
   onInsertType,
   onOpenCreateType,
   onEditType,
@@ -168,26 +173,28 @@ export const PresetsSidebar: React.FC<PresetsSidebarProps> = ({
               <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[11px] scrollbar-none">
                 <button
                   onClick={() => setSelectedTag(null)}
-                  className={`px-2 py-0.5 rounded-md transition shrink-0 ${
+                  className={`px-2 py-0.5 rounded transition shrink-0 text-xs border ${
                     selectedTag === null
-                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-medium'
-                      : 'text-slate-400 hover:text-slate-200 bg-slate-800/40 border border-transparent'
+                      ? 'bg-zinc-800 text-zinc-100 border-zinc-600 font-medium'
+                      : 'text-zinc-400 hover:text-zinc-200 bg-zinc-900 border-zinc-800'
                   }`}
                 >
                   All
                 </button>
                 {allTags.map((tag) => (
-                  <button
+                  <TagBadge
                     key={tag}
+                    tag={tag}
+                    size="xs"
+                    customColors={customColors}
+                    isActive={selectedTag === tag}
                     onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
-                    className={`px-2 py-0.5 rounded-md transition shrink-0 ${
-                      selectedTag === tag
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-medium'
-                        : 'text-slate-400 hover:text-slate-200 bg-slate-800/40 border border-transparent'
-                    }`}
-                  >
-                    #{tag}
-                  </button>
+                    onColorChange={
+                      onTagColorChange
+                        ? (colorId) => onTagColorChange(tag, colorId)
+                        : undefined
+                    }
+                  />
                 ))}
               </div>
             )}
@@ -293,12 +300,17 @@ export const PresetsSidebar: React.FC<PresetsSidebarProps> = ({
                                 {st.tags && st.tags.length > 0 && (
                                   <div className="flex flex-wrap gap-1 mt-0.5">
                                     {st.tags.map((t) => (
-                                      <span
+                                      <TagBadge
                                         key={t}
-                                        className="text-[10px] text-slate-400 bg-slate-950 px-1.5 py-0.2 rounded border border-slate-800/80"
-                                      >
-                                        #{t}
-                                      </span>
+                                        tag={t}
+                                        size="xs"
+                                        customColors={customColors}
+                                        onColorChange={
+                                          onTagColorChange
+                                            ? (colorId) => onTagColorChange(t, colorId)
+                                            : undefined
+                                        }
+                                      />
                                     ))}
                                   </div>
                                 )}

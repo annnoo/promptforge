@@ -4,6 +4,9 @@ import type {
   Command,
   DiffLine,
   DocumentStateDto,
+  ImportFileContent,
+  ImportPreviewDto,
+  SavedPromptSummary,
   SectionPreset,
   SectionType,
   StarterTemplate,
@@ -691,4 +694,156 @@ export const api = {
     }
     return diff;
   },
+
+  async setTagColor(tag: string, color: string): Promise<AppConfig> {
+    if (isTauri()) {
+      return invoke<AppConfig>('set_tag_color', { tag, color });
+    }
+    if (!mockConfig.tag_colors) mockConfig.tag_colors = {};
+    mockConfig.tag_colors[tag] = color;
+    return JSON.parse(JSON.stringify(mockConfig));
+  },
+
+  async generateSkillContent(stage: string, name?: string, description?: string): Promise<string> {
+    if (isTauri()) {
+      return invoke<string>('generate_skill_content', {
+        stage,
+        name: name || null,
+        description: description || null,
+      });
+    }
+    const skillName = (name || mockState.document.title).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    return `---
+name: ${skillName}
+description: ${description || mockState.document.description || 'Agent skill'}
+---
+
+# ${mockState.document.title}
+
+${mockState.document.description}
+
+## Prompt Instructions
+\`\`\`xml
+<prompt>
+${mockState.document.sections.map(s => `  <${s.tag}>\n    ${s.brief}\n  </${s.tag}>`).join('\n')}
+</prompt>
+\`\`\`
+`;
+  },
+
+  async exportSkillToFile(
+    path: string,
+    stage: string,
+    name?: string,
+    description?: string
+  ): Promise<void> {
+    if (isTauri()) {
+      return invoke<void>('export_skill_to_file', {
+        path,
+        stage,
+        name: name || null,
+        description: description || null,
+      });
+    }
+    console.log(`Mock exported skill to ${path}`);
+  },
+
+  async pickSaveSkillFile(defaultName?: string): Promise<string | null> {
+    if (isTauri()) {
+      return invoke<string | null>('pick_save_skill_file', { defaultName: defaultName || null });
+    }
+    return prompt('Enter skill destination file:', defaultName || 'SKILL.md');
+  },
+
+  async parseImportPreview(content: string): Promise<ImportPreviewDto> {
+    if (isTauri()) {
+      return invoke<ImportPreviewDto>('parse_import_preview', { content });
+    }
+    return {
+      format: 'markdown',
+      title: 'Imported Prompt',
+      description: 'Mock imported preview',
+      section_count: 2,
+      sections: [
+        {
+          id: 'mock-1',
+          tag: 'role',
+          brief: 'Mock Role',
+          refined: null,
+          locked: false,
+          enabled: true,
+        },
+        {
+          id: 'mock-2',
+          tag: 'task',
+          brief: 'Mock Task',
+          refined: null,
+          locked: false,
+          enabled: true,
+        },
+      ],
+    };
+  },
+
+  async importPromptContent(content: string, mode: 'replace' | 'append'): Promise<DocumentStateDto> {
+    if (isTauri()) {
+      return invoke<DocumentStateDto>('import_prompt_content', { content, mode });
+    }
+    mockState.dirty = true;
+    return JSON.parse(JSON.stringify(mockState));
+  },
+
+  async pickImportFile(): Promise<ImportFileContent | null> {
+    if (isTauri()) {
+      return invoke<ImportFileContent | null>('pick_import_file');
+    }
+    return null;
+  },
+
+  async listLibraryPrompts(): Promise<SavedPromptSummary[]> {
+    if (isTauri()) {
+      return invoke<SavedPromptSummary[]>('list_library_prompts');
+    }
+    return [
+      {
+        id: mockState.document.id,
+        title: mockState.document.title,
+        description: mockState.document.description,
+        section_count: mockState.document.sections.length,
+        tags: ['architecture', 'rust', 'concurrency'],
+        file_path: 'mock/path/prompt.json',
+        updated_at: 'Just now',
+      },
+    ];
+  },
+
+  async saveToLibrary(): Promise<SavedPromptSummary> {
+    if (isTauri()) {
+      return invoke<SavedPromptSummary>('save_to_library');
+    }
+    return {
+      id: mockState.document.id,
+      title: mockState.document.title,
+      description: mockState.document.description,
+      section_count: mockState.document.sections.length,
+      tags: ['architecture', 'rust'],
+      file_path: 'mock/path/saved.prompt.json',
+      updated_at: 'Just now',
+    };
+  },
+
+  async loadFromLibrary(id: string): Promise<DocumentStateDto> {
+    if (isTauri()) {
+      return invoke<DocumentStateDto>('load_from_library', { id });
+    }
+    return JSON.parse(JSON.stringify(mockState));
+  },
+
+  async deleteFromLibrary(id: string): Promise<void> {
+    if (isTauri()) {
+      return invoke<void>('delete_from_library', { id });
+    }
+    console.log(`Mock deleted prompt ${id} from library`);
+  },
 };
+

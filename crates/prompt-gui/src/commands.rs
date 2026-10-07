@@ -1,9 +1,14 @@
 use prompt_application::{ApplicationService, Command, PendingRefinements, ProposedSectionChange};
 use prompt_core::{
-    render_xml, ALL_PRESETS, ALL_TEMPLATES, PromptDocument, RenderOptions,
-    RenderStage, SectionPreset, StarterTemplate,
+    generate_skill_markdown, import_prompt_from_text, render_xml, ALL_PRESETS, ALL_TEMPLATES,
+    ImportFormat, PromptDocument, PromptSection, RenderOptions, RenderStage, SectionPreset,
+    SkillExportOptions, StarterTemplate,
 };
-use prompt_persistence::{export_text, load_document as load_doc, save_document as save_doc, AppConfig};
+use prompt_persistence::{
+    delete_from_library as delete_doc_from_lib, export_skill, export_text, list_saved_prompts,
+    load_document as load_doc, load_from_library as load_doc_from_lib, save_document as save_doc,
+    save_to_library as save_doc_to_lib, AppConfig, SavedPromptSummary,
+};
 use prompt_refinement::{
     compute_line_diff, DiffLine, OpenAiCompatibleProvider, RefinementEngine, RefinementMode,
 };
@@ -376,3 +381,170 @@ pub fn export_xml_to_file(path: String, stage: String, clean: bool, state: State
 pub fn compute_diff(original: String, refined: String) -> Vec<DiffLine> {
     compute_line_diff(&original, &refined)
 }
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ImportPreviewDto {
+    pub format: ImportFormat,
+    pub title: String,
+    pub description: String,
+    pub section_count: usize,
+    pub sections: Vec<PromptSection>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ImportFileContent {
+    pub path: String,
+    pub file_name: String,
+    pub content: String,
+}
+
+#[tauri::command]
+pub fn set_tag_color(tag: String, color: String, state: State<AppState>) -> Result<AppConfig, String> {
+    let mut config = state.config.lock().unwrap();
+    config.set_tag_color(tag, color);
+    config.save().map_err(|e| e.to_string())?;
+    Ok(config.clone())
+}
+
+#[tauri::command]
+pub fn generate_skill_content(
+    stage: String,
+    name: Option<String>,
+    description: Option<String>,
+    state: State<AppState>,
+) -> Result<String, String> {
+    let service = state.service.lock().unwrap();
+    let render_stage = match stage.to_lowercase().as_str() {
+        "draft" => RenderStage::Draft,
+        _ => RenderStage::Final,
+    };
+    let options = SkillExportOptions {
+        stage: render_stage,
+        custom_name: name,
+        custom_description: description,
+    };
+    generate_skill_markdown(service.document(), options).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn export_skill_to_file(
+    path: String,
+    stage: String,
+    name: Option<String>,
+    description: Option<String>,
+    state: State<AppState>,
+) -> Result<(), String> {
+    let service = state.service.lock().unwrap();
+    let render_stage = match stage.to_lowercase().as_str() {
+        "draft" => RenderStage::Draft,
+        _ => RenderStage::Final,
+    };
+    let options = SkillExportOptions {
+        stage: render_stage,
+        custom_name: name,
+        custom_description: description,
+    };
+    export_skill(Path::new(&path), service.document(), options).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn pick_save_skill_file(default_name: Option<String>) -> Option<String> {
+    let dialog = rfd::FileDialog::new()
+        .add_filter("Agent Skill (Markdown)", &["md", "markdown"])
+        .set_file_name(default_name.unwrap_or_else(|| "SKILL.md".to_string()));
+    dialog.save_file().map(|p| p.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn parse_import_preview(content: String) -> Result<ImportPreviewDto, String> {
+    let imported = import_prompt_from_text(&content).map_err(|e| e.to_string())?;
+    Ok(ImportPreviewDto {
+        format: imported.format,
+        title: imported.title,
+        description: imported.description,
+        section_count: imported.sections.len(),
+        sections: imported.sections,
+    })
+}
+
+#[tauri::command]
+pub fn import_prompt_content(
+    content: String,
+    mode: String,
+    state: State<AppState>,
+) -> Result<DocumentStateDto, String> {
+    let imported = import_prompt_from_text(&content).map_err(|e| e.to_string())?;
+    let mut service = state.service.lock().unwrap();
+
+    if mode.to_lowercase() == "append" {
+        service
+            .append_sections(imported.sections)
+            .map_err(|e| e.to_string())?;
+    } else {
+        let doc = imported.to_document().map_err(|e| e.to_string())?;
+        service.load_document(doc, None);
+    }
+
+    drop(service);
+    Ok(state.to_dto())
+}
+
+#[tauri::command]
+pub fn pick_import_file() -> Option<ImportFileContent> {
+    let file = rfd::FileDialog::new()
+        .add_filter(
+            "Prompt Formats",
+            &["json", "prompt.json", "xml", "md", "txt"],
+        )
+        .pick_file()?;
+
+    let content = std::fs::read_to_string(&file).ok()?;
+    let file_name = file
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("import_file")
+        .to_string();
+
+    Some(ImportFileContent {
+        path: file.to_string_lossy().to_string(),
+        file_name,
+        content,
+    })
+}
+
+#[tauri::command]
+pub fn list_library_prompts(_state: State<AppState>) -> Result<Vec<SavedPromptSummary>, String> {
+    let library_dir = AppConfig::library_dir()
+        .ok_or_else(|| "Could not determine library directory".to_string())?;
+    list_saved_prompts(&library_dir).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn save_to_library(state: State<AppState>) -> Result<SavedPromptSummary, String> {
+    let library_dir = AppConfig::library_dir()
+        .ok_or_else(|| "Could not determine library directory".to_string())?;
+    let service = state.service.lock().unwrap();
+    save_doc_to_lib(&library_dir, service.document()).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn load_from_library(id: String, state: State<AppState>) -> Result<DocumentStateDto, String> {
+    let library_dir = AppConfig::library_dir()
+        .ok_or_else(|| "Could not determine library directory".to_string())?;
+    let doc = load_doc_from_lib(&library_dir, &id).map_err(|e| e.to_string())?;
+
+    let mut service = state.service.lock().unwrap();
+    service.load_document(doc, None);
+    drop(service);
+
+    Ok(state.to_dto())
+}
+
+#[tauri::command]
+pub fn delete_from_library(id: String, _state: State<AppState>) -> Result<(), String> {
+    let library_dir = AppConfig::library_dir()
+        .ok_or_else(|| "Could not determine library directory".to_string())?;
+    delete_doc_from_lib(&library_dir, &id).map_err(|e| e.to_string())?;
+    Ok(())
+}
+

@@ -9,6 +9,7 @@ import {
   Component,
 } from 'lucide-react';
 import type { SectionType } from '../types';
+import { TagBadge } from './TagBadge';
 
 interface CreateTypeModalProps {
   isOpen: boolean;
@@ -239,19 +240,12 @@ export const CreateTypeModal: React.FC<CreateTypeModalProps> = ({
 
             <div className="bg-slate-950 border border-slate-800 rounded-lg p-2 flex flex-wrap gap-1.5 min-h-[38px] items-center focus-within:border-amber-500/50">
               {tags.map((t) => (
-                <span
+                <TagBadge
                   key={t}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700 text-[11px]"
-                >
-                  <span>#{t}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveTag(t)}
-                    className="hover:text-red-400"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
+                  tag={t}
+                  size="xs"
+                  onRemove={() => handleRemoveTag(t)}
+                />
               ))}
               <input
                 type="text"

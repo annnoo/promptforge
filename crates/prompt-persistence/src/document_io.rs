@@ -96,6 +96,16 @@ pub fn export_xml(
     export_text(path, &xml)
 }
 
+/// Exports a prompt document as an Agent Skill markdown file.
+pub fn export_skill(
+    path: &Path,
+    doc: &PromptDocument,
+    options: prompt_core::SkillExportOptions,
+) -> Result<(), PersistenceError> {
+    let md = prompt_core::generate_skill_markdown(doc, options)?;
+    export_text(path, &md)
+}
+
 /// Atomically exports arbitrary text to a target file.
 pub fn export_text(path: &Path, text: &str) -> Result<(), PersistenceError> {
     if let Some(parent) = path.parent() {
