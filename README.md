@@ -36,13 +36,13 @@ PromptForge provides a complete workbench designed around this philosophy:
 1. **Local-First & Private:** Pure native Rust with zero telemetry, zero forced cloud dependencies, and zero mandatory API accounts.
 2. **Non-Destructive Refinement:** Your original thoughts and briefs are preserved alongside refined drafts. You can compare changes side-by-side using unified line diffs before accepting or rejecting them.
 3. **Deterministic XML Compilation:** XML rendering is strictly ordered, properly escaped, and guaranteed identical across GUI, TUI, and CLI.
-4. **Three Native Frontends:** Use the rich desktop GUI (`egui`), the high-speed terminal UI (`ratatui`), or shell automation (`clap`).
+4. **Three Native Frontends:** Use the modern web-powered desktop GUI (`tauri` + React + Tailwind), the high-speed terminal UI (`ratatui`), or shell automation (`clap`).
 
 ```
 ┌────────────────────────────────────────────────────────┐
 │                      PromptForge                       │
 ├───────────────────┬───────────────────┬────────────────┤
-│  prompt-gui (egui)│ prompt-tui (ratatui)│prompt-cli (clap)│
+│ prompt-gui (Tauri)│ prompt-tui (ratatui)│prompt-cli (clap)│
 └─────────┬─────────┴─────────┬─────────┴────────┬───────┘
           │                   │                  │
           ▼                   ▼                  ▼
@@ -74,7 +74,7 @@ PromptForge is organized as a Cargo workspace with strict layer isolation:
 | `crates/prompt-persistence` | Atomic file persistence (`.prompt.json`), safe reads, text exports, app configuration | `directories`, `serde_json`, `prompt-core` |
 | `crates/prompt-refinement` | Refinement modes, changeset validation, unified diff generator, manual provider, OpenAI-compatible HTTP client | `similar`, `reqwest`, `prompt-core` |
 | `crates/prompt-tui` | Interactive Terminal UI with multiline editing, modals, and diff review | `ratatui`, `crossterm`, `prompt-application` |
-| `crates/prompt-gui` | Native Graphical Workbench with 3-column layout, drag-and-drop cards, and diff dialog | `egui`, `eframe`, `arboard`, `prompt-application` |
+| `crates/prompt-gui` | Native Graphical Workbench with Tauri 2, React, TypeScript, and Tailwind CSS | `tauri`, `wry`, `rfd`, `prompt-application` |
 | `crates/prompt-cli` | Unified binary command line interface | `clap`, `tokio` |
 
 ---
@@ -134,16 +134,28 @@ Launch with:
 promptforge gui [FILE]
 ```
 
-- **Left Panel (Presets & Templates):** Quick-add buttons for 13 standard prompt sections (`role`, `context`, `task`, `constraints`, `examples`, etc.) and starter templates.
+PromptForge includes a native desktop graphical workbench powered by **Tauri 2**, React 19, TypeScript, and Tailwind CSS v4, embedded into the compiled binary:
+
+- **Left Sidebar (Presets, Templates, & Outline):**
+  - **Presets Library:** 13 standardized prompt building blocks (`<role>`, `<context>`, `<task>`, `<constraints>`, `<output_format>`, etc.) with instant "+ Add" buttons.
+  - **Starter Templates:** Instantiate battle-tested architectural templates (`General Task`, `Software Engineering`, `Research & Analysis`).
+  - **Custom XML Section Creator:** Create arbitrary custom XML tags with initial notes.
+  - **Document Outline:** Document mini-map with section badges (`Locked`, `Disabled`, `Refined`) and jump-to navigation.
 - **Center Canvas (Visual Section Cards):**
-  - Drag-and-drop handle (≡) to dynamically reorder sections.
-  - Inline tag editor with XML name validation.
-  - Multiline brief editor with real-time word counting.
-  - Lock toggle (🔒) to protect sections against deletion or automated refinement.
-  - Enable toggle (👁) to exclude sections from compilation without deleting them.
-  - Duplicate (📋) and Remove (🗑) buttons.
-- **Right Panel (Live XML Compilation):** Real-time, deterministic XML preview. Toggle between **Draft** (original briefs) and **Final** (accepted refined text). Includes a **Copy to Clipboard** button.
-- **Top Bar:** File open/save/export, undo/redo (`Ctrl+Z`, `Ctrl+Y`), and the **Refine Prompt** modal.
+  - **Tag Renaming:** Click-to-edit XML tag names with strict schema validation.
+  - **Multi-State Tabs:** Seamlessly toggle between **Draft Brief**, **Refined Prompt**, and an **Inline Line Diff** comparing both versions.
+  - **Card Actions:** Instant Lock toggle (🔒) to protect sections against edits or refinement, Visibility toggle (👁) to exclude from XML output, Duplicate (📋), Reorder (▲/▼), and Delete (🗑).
+  - **Live Metrics:** Real-time character counts, word counts, and estimated token usage per section.
+- **Right Panel (Live XML Compilation & Inspector):**
+  - **Deterministic XML Engine:** Live rendered XML with syntax styling.
+  - **Stage Switcher:** Toggle between **Draft** (original briefs) and **Final** (accepted refined outputs).
+  - **Clean Mode Toggle:** Toggle between production XML (`<task>...</task>`) and detailed development XML with section IDs (`<task id="...">...</task>`).
+  - **One-Click Clipboard & Export:** Instant copy to clipboard with toast confirmation and file export.
+  - **Token & Cost Metrics:** Real-time token consumption estimates.
+- **Interactive Modals:**
+  - **Refine Prompt Dialog:** Choose between **Conservative**, **Expand**, and **Critique** refinement strategies. Execute automated calls to any OpenAI-compatible endpoint, or use the zero-dependency **Manual Mode** to copy prompts into ChatGPT/Claude and paste back the response.
+  - **Line-by-Line Diff Review Modal:** Visual red/green diff inspector displaying AI critique, warnings, open questions, and granular per-section **Accept** / **Reject** buttons.
+  - **Settings Modal:** Configure active provider, API base URL, model name, and API key environment variables.
 
 ### Terminal Interface (TUI)
 Launch with:

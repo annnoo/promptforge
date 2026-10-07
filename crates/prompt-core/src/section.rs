@@ -30,6 +30,9 @@ pub struct PromptSection {
     /// Whether the section is enabled in generated output.
     #[serde(default = "default_enabled")]
     pub enabled: bool,
+    /// Tags or labels assigned to this section for organization.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
 }
 
 fn default_enabled() -> bool {
@@ -48,6 +51,7 @@ impl PromptSection {
             refined: None,
             locked: false,
             enabled: true,
+            tags: Vec::new(),
         })
     }
 
@@ -66,6 +70,7 @@ impl PromptSection {
             refined: None,
             locked: false,
             enabled: true,
+            tags: Vec::new(),
         })
     }
 
@@ -101,6 +106,7 @@ impl PromptSection {
             refined: self.refined.clone(),
             locked: false,
             enabled: self.enabled,
+            tags: self.tags.clone(),
         }
     }
 }

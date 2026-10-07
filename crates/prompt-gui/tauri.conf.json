@@ -1,0 +1,25 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "PromptForge",
+  "version": "0.1.0",
+  "identifier": "com.promptforge.app",
+  "build": {
+    "frontendDist": "../../ui/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "PromptForge — Prompt Engineering Workbench",
+        "width": 1360,
+        "height": 880,
+        "minWidth": 960,
+        "minHeight": 640,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  }
+}

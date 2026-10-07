@@ -41,3 +41,6 @@ directories = "6.0"
 similar = "3.2"
 arboard = "3.6"
 tempfile = "3.17"
+tauri = { version = "2", features = ["wry"] }
+tauri-build = { version = "2" }
+rfd = "0.15"

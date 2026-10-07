@@ -213,6 +213,22 @@ impl ApplicationService {
                     self.state.dirty = true;
                 }
             }
+            Command::UpdateTags { id, tags } => {
+                let section = self
+                    .state
+                    .document
+                    .section_mut(id)
+                    .ok_or(ApplicationError::SectionNotFound(id))?;
+                if section.locked {
+                    return Err(ApplicationError::SectionLocked(id));
+                }
+                if section.tags != tags {
+                    self.commit_checkpoint();
+                    let section = self.state.document.section_mut(id).unwrap();
+                    section.tags = tags;
+                    self.state.dirty = true;
+                }
+            }
             Command::UpdateTitle { title } => {
                 if self.state.document.title != title {
                     self.commit_checkpoint();
@@ -478,5 +494,40 @@ mod tests {
         assert_eq!(sec.brief, "Initial task");
         // Pending changes should now be empty
         assert!(service.state().pending_refinements.as_ref().unwrap().changes.is_empty());
+    }
+
+    #[test]
+    fn test_update_tags_command() {
+        let mut service = ApplicationService::default();
+        service
+            .execute(Command::AddSection {
+                tag: "role".to_string(),
+                brief: "Engineer".to_string(),
+            })
+            .unwrap();
+        let id = service.document().sections[0].id;
+
+        service
+            .execute(Command::UpdateTags {
+                id,
+                tags: vec!["critical".to_string(), "backend".to_string()],
+            })
+            .unwrap();
+
+        assert_eq!(
+            service.document().section(id).unwrap().tags,
+            vec!["critical".to_string(), "backend".to_string()]
+        );
+
+        // Test undo
+        service.execute(Command::Undo).unwrap();
+        assert!(service.document().section(id).unwrap().tags.is_empty());
+
+        // Test redo
+        service.execute(Command::Redo).unwrap();
+        assert_eq!(
+            service.document().section(id).unwrap().tags,
+            vec!["critical".to_string(), "backend".to_string()]
+        );
     }
 }

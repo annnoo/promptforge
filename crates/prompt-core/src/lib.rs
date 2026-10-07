@@ -9,8 +9,8 @@ pub use document::{PromptDocument, CURRENT_SCHEMA_VERSION};
 pub use error::CoreError;
 pub use section::{PromptSection, RenderStage};
 pub use template::{
-    SectionPreset, StarterTemplate, ALL_PRESETS, ALL_TEMPLATES, TEMPLATE_ENGINEERING,
-    TEMPLATE_GENERAL, TEMPLATE_RESEARCH,
+    get_builtin_section_types, SectionPreset, SectionType, StarterTemplate, ALL_PRESETS,
+    ALL_TEMPLATES, TEMPLATE_ENGINEERING, TEMPLATE_GENERAL, TEMPLATE_RESEARCH,
 };
 pub use validation::{validate_tag_name, validate_unique_section_ids};
 pub use xml::{

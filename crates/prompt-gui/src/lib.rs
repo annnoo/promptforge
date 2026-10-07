@@ -1,37 +1,62 @@
-pub mod app;
-pub mod modals;
-pub mod panels;
-pub mod theme;
+pub mod commands;
 
-pub use app::PromptForgeGuiApp;
-use prompt_persistence::load_document;
+use commands::*;
+use prompt_application::ApplicationService;
+use prompt_core::PromptDocument;
+use prompt_persistence::{load_document as load_doc, AppConfig};
 use std::path::PathBuf;
 
-/// Launches the native desktop GUI workbench using egui + eframe.
-pub fn run_gui(initial_file: Option<PathBuf>) -> Result<(), eframe::Error> {
+/// Launches the PromptForge desktop GUI using Tauri 2.
+pub fn run_gui(initial_file: Option<PathBuf>) -> anyhow::Result<()> {
+    let config = AppConfig::load_or_default();
     let initial_doc = if let Some(ref path) = initial_file {
         if path.exists() {
-            load_document(path).ok()
+            load_doc(path).unwrap_or_else(|_| PromptDocument::default())
         } else {
-            None
+            PromptDocument::default()
         }
     } else {
-        None
+        PromptDocument::default()
     };
 
-    let options = eframe::NativeOptions {
-        viewport: eframe::egui::ViewportBuilder::default()
-            .with_title("PromptForge — Prompt Engineering Workbench")
-            .with_inner_size([1200.0, 800.0])
-            .with_min_inner_size([800.0, 500.0]),
-        ..Default::default()
-    };
+    let mut service = ApplicationService::new(initial_doc);
+    if let Some(ref path) = initial_file {
+        if path.exists() {
+            service.mark_saved(path.clone());
+        }
+    }
 
-    eframe::run_native(
-        "PromptForge",
-        options,
-        Box::new(move |_cc| {
-            Ok(Box::new(PromptForgeGuiApp::new(initial_doc, initial_file)))
-        }),
-    )
+    let state = AppState::new(service, config);
+
+    tauri::Builder::default()
+        .manage(state)
+        .invoke_handler(tauri::generate_handler![
+            get_document_state,
+            execute_command,
+            new_document,
+            load_document,
+            save_document,
+            render_xml_content,
+            get_presets,
+            get_section_types,
+            save_section_type,
+            delete_section_type,
+            get_templates,
+            get_config,
+            save_config,
+            generate_manual_request,
+            apply_manual_response,
+            execute_automated_refinement,
+            accept_refinement,
+            reject_refinement,
+            accept_all_refinements,
+            reject_all_refinements,
+            accept_suggested_section,
+            pick_open_file,
+            pick_save_file,
+            export_xml_to_file,
+            compute_diff,
+        ])
+        .run(tauri::generate_context!())
+        .map_err(|e| anyhow::anyhow!("Tauri runtime error: {e}"))
 }

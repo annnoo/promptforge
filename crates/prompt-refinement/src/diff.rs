@@ -1,7 +1,8 @@
+use serde::{Deserialize, Serialize};
 use similar::{ChangeTag, TextDiff};
 
 /// Tag indicating the type of change on a line.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DiffTag {
     Equal,
     Delete,
@@ -9,7 +10,7 @@ pub enum DiffTag {
 }
 
 /// A single line in a diff view.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiffLine {
     pub tag: DiffTag,
     pub text: String,

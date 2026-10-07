@@ -13,3 +13,7 @@ Cargo.lock.bak
 # PromptForge local test artifacts
 *.tmp
 /skills/test-install/
+
+# Tauri generated artifacts
+crates/**/gen/
+node_modules/

@@ -33,6 +33,8 @@ impl Default for OpenAiCompatibleConfig {
     }
 }
 
+use prompt_core::{get_builtin_section_types, SectionType};
+
 /// Persistent user configuration for PromptForge.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -41,6 +43,8 @@ pub struct AppConfig {
     pub recent_files: Vec<PathBuf>,
     #[serde(default = "default_theme")]
     pub theme: String,
+    #[serde(default)]
+    pub custom_types: Vec<SectionType>,
 }
 
 fn default_theme() -> String {
@@ -54,6 +58,7 @@ impl Default for AppConfig {
             openai_compatible: OpenAiCompatibleConfig::default(),
             recent_files: Vec::new(),
             theme: default_theme(),
+            custom_types: Vec::new(),
         }
     }
 }
@@ -126,4 +131,67 @@ impl AppConfig {
             self.recent_files.truncate(10);
         }
     }
+
+    /// Returns all section types: built-ins plus user-created custom types.
+    pub fn all_section_types(&self) -> Vec<SectionType> {
+        let mut types = get_builtin_section_types();
+        types.extend(self.custom_types.clone());
+        types
+    }
+
+    /// Adds or updates a custom section type by its ID.
+    pub fn save_custom_type(&mut self, custom_type: SectionType) {
+        if let Some(pos) = self.custom_types.iter().position(|t| t.id == custom_type.id) {
+            self.custom_types[pos] = custom_type;
+        } else {
+            self.custom_types.push(custom_type);
+        }
+    }
+
+    /// Deletes a custom section type by ID.
+    pub fn delete_custom_type(&mut self, id: &str) -> bool {
+        if let Some(pos) = self.custom_types.iter().position(|t| t.id == id) {
+            self.custom_types.remove(pos);
+            true
+        } else {
+            false
+        }
+    }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_custom_types_management() {
+        let mut config = AppConfig::default();
+        let initial_count = config.all_section_types().len();
+        assert_eq!(initial_count, 13); // 13 built-ins
+
+        let custom = SectionType {
+            id: "custom-security".to_string(),
+            name: "Security Invariants".to_string(),
+            tag: "security_invariants".to_string(),
+            description: "Strict safety boundaries".to_string(),
+            default_brief: "No secrets in logs.".to_string(),
+            folder: "Security".to_string(),
+            tags: vec!["safety".to_string(), "prod".to_string()],
+            is_builtin: false,
+        };
+
+        config.save_custom_type(custom.clone());
+        assert_eq!(config.all_section_types().len(), initial_count + 1);
+
+        // Update
+        let mut updated = custom.clone();
+        updated.description = "Updated description".to_string();
+        config.save_custom_type(updated);
+        assert_eq!(config.all_section_types().len(), initial_count + 1);
+
+        // Delete
+        assert!(config.delete_custom_type("custom-security"));
+        assert_eq!(config.all_section_types().len(), initial_count);
+    }
+}
+

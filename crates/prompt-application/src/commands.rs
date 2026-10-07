@@ -1,7 +1,9 @@
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Commands that modify domain and application state.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub enum Command {
     /// Add a new section with a given XML tag and initial brief.
     AddSection { tag: String, brief: String },
@@ -21,6 +23,8 @@ pub enum Command {
     RenameSection { id: Uuid, tag: String },
     /// Update the original brief text of a section.
     UpdateBrief { id: Uuid, text: String },
+    /// Update tags assigned to a section.
+    UpdateTags { id: Uuid, tags: Vec<String> },
     /// Update document title.
     UpdateTitle { title: String },
     /// Update document description.

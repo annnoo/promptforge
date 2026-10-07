@@ -25,7 +25,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Launch the native desktop graphical workbench (egui)
+    /// Launch the native desktop graphical workbench (Tauri 2)
     Gui {
         /// Optional prompt document file to open (.prompt.json)
         file: Option<PathBuf>,
@@ -143,20 +143,13 @@ enum SkillAction {
     },
 }
 
-#[tokio::main]
-async fn main() -> ExitCode {
+fn main() -> ExitCode {
     let cli = Cli::parse();
 
     match cli.command {
-        None => {
-            // Default to running GUI if graphical display available, else TUI
-            if std::env::var("DISPLAY").is_ok() || std::env::var("WAYLAND_DISPLAY").is_ok() {
-                if let Err(e) = prompt_gui::run_gui(None) {
-                    eprintln!("Error launching GUI: {e}");
-                    return ExitCode::FAILURE;
-                }
-            } else if let Err(e) = prompt_tui::run_tui(None).await {
-                eprintln!("Error launching TUI: {e}");
+        None if std::env::var("DISPLAY").is_ok() || std::env::var("WAYLAND_DISPLAY").is_ok() => {
+            if let Err(e) = prompt_gui::run_gui(None) {
+                eprintln!("Error launching GUI: {e}");
                 return ExitCode::FAILURE;
             }
             ExitCode::SUCCESS
@@ -168,6 +161,26 @@ async fn main() -> ExitCode {
             }
             ExitCode::SUCCESS
         }
+        _ => {
+            tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .expect("Failed to initialize async runtime")
+                .block_on(run_cli(cli))
+        }
+    }
+}
+
+async fn run_cli(cli: Cli) -> ExitCode {
+    match cli.command {
+        None => {
+            if let Err(e) = prompt_tui::run_tui(None).await {
+                eprintln!("Error launching TUI: {e}");
+                return ExitCode::FAILURE;
+            }
+            ExitCode::SUCCESS
+        }
+        Some(Commands::Gui { .. }) => unreachable!(),
         Some(Commands::Tui { file }) => {
             if let Err(e) = prompt_tui::run_tui(file).await {
                 eprintln!("Error launching TUI: {e}");
