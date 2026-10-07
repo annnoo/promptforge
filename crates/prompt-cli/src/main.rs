@@ -147,7 +147,10 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
 
     match cli.command {
-        None if std::env::var("DISPLAY").is_ok() || std::env::var("WAYLAND_DISPLAY").is_ok() => {
+        None if cfg!(target_os = "windows")
+            || cfg!(target_os = "macos")
+            || std::env::var("DISPLAY").is_ok()
+            || std::env::var("WAYLAND_DISPLAY").is_ok() => {
             if let Err(e) = prompt_gui::run_gui(None) {
                 eprintln!("Error launching GUI: {e}");
                 return ExitCode::FAILURE;

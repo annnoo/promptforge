@@ -3508,6 +3508,8 @@ dependencies = [
  "prompt-tui",
  "quick-xml 0.37.5",
  "serde_json",
+ "tauri",
+ "tauri-build",
  "tempfile",
  "tokio",
  "uuid",
