@@ -142,8 +142,7 @@ jobs:
         run: pnpm --dir ui run build
 
       - name: Build and package Tauri desktop application
-        working-directory: crates/prompt-cli
-        run: pnpm --dir ../../ui run tauri build ${{ matrix.bundle_args }}
+        run: node ui/node_modules/@tauri-apps/cli/tauri.js build ${{ matrix.bundle_args }}
 
       - name: Upload packaged desktop artifact
         uses: actions/upload-artifact@v4
