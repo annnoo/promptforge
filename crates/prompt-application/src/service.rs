@@ -363,6 +363,42 @@ impl ApplicationService {
                     pending.changes.clear();
                 }
             }
+            Command::SaveScenario { scenario } => {
+                self.commit_checkpoint();
+                if let Some(pos) = self.state.document.scenarios.iter().position(|s| s.id == scenario.id) {
+                    self.state.document.scenarios[pos] = scenario;
+                } else {
+                    self.state.document.scenarios.push(scenario);
+                }
+                self.state.dirty = true;
+            }
+            Command::DeleteScenario { id } => {
+                self.commit_checkpoint();
+                self.state.document.scenarios.retain(|s| s.id != id);
+                self.state.dirty = true;
+            }
+            Command::CreateSnapshot { name, description } => {
+                let snapshot = prompt_core::DocumentSnapshot::capture(&self.state.document, name, description);
+                self.state.document.snapshots.push(snapshot);
+                self.state.dirty = true;
+            }
+            Command::RestoreSnapshot { id } => {
+                let snapshot = self
+                    .state
+                    .document
+                    .snapshots
+                    .iter()
+                    .find(|s| s.id == id)
+                    .cloned()
+                    .ok_or_else(|| ApplicationError::General(format!("Snapshot '{id}' not found")))?;
+                self.commit_checkpoint();
+                snapshot.restore_into(&mut self.state.document);
+                self.state.dirty = true;
+            }
+            Command::DeleteSnapshot { id } => {
+                self.state.document.snapshots.retain(|s| s.id != id);
+                self.state.dirty = true;
+            }
             Command::Undo => {
                 let current = self.state.document.clone();
                 let restored = self.history.undo(current).ok_or(ApplicationError::CannotUndo)?;

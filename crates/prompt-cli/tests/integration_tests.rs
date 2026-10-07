@@ -682,3 +682,150 @@ fn test_tag_colors_configuration_persistence() {
     assert_eq!(loaded.tag_colors.get("security").unwrap(), "rose");
 }
 
+// 23. Dynamic prompt variables, scenario interpolation, and telemetry
+#[test]
+fn test_dynamic_variables_and_scenario_interpolation() {
+    let mut doc = PromptDocument::new("Variable Assistant", "Testing variables");
+    let sec1 = PromptSection::new("role", "You are an assistant for {{target_role}}.").unwrap();
+    let sec2 = PromptSection::new("task", "Analyze {{target_framework}} in {{environment}}.").unwrap();
+    doc.add_section(sec1).unwrap();
+    doc.add_section(sec2).unwrap();
+
+    // Variable extraction
+    let vars = prompt_core::extract_document_variables(&doc);
+    assert_eq!(vars, vec!["environment", "target_framework", "target_role"]);
+
+    // Test scenario interpolation
+    let mut scenario_vars = std::collections::HashMap::new();
+    scenario_vars.insert("target_role".to_string(), "DevOps Engineer".to_string());
+    scenario_vars.insert("target_framework".to_string(), "Kubernetes".to_string());
+    scenario_vars.insert("environment".to_string(), "Production".to_string());
+
+    let rendered_xml = prompt_core::render_interpolated_xml(
+        &doc,
+        RenderOptions {
+            stage: RenderStage::Final,
+            include_ids: false,
+            pretty: true,
+        },
+        &scenario_vars,
+    )
+    .unwrap();
+
+    assert!(rendered_xml.contains("You are an assistant for DevOps Engineer."));
+    assert!(rendered_xml.contains("Analyze Kubernetes in Production."));
+
+    // Telemetry
+    let (char_count, word_count, estimated_tokens) =
+        prompt_core::calculate_prompt_telemetry(&rendered_xml);
+    assert!(char_count > 0);
+    assert!(word_count > 0);
+    assert!(estimated_tokens > 0);
+
+    // Save scenario via ApplicationService command
+    let mut service = ApplicationService::new(doc);
+    let scenario = prompt_core::TestScenario {
+        id: "scen-1".to_string(),
+        name: "DevOps Prod Scenario".to_string(),
+        description: Some("Prod testing matrix".to_string()),
+        variables: scenario_vars,
+    };
+    service.execute(Command::SaveScenario { scenario }).unwrap();
+    assert_eq!(service.state().document.scenarios.len(), 1);
+    assert_eq!(service.state().document.scenarios[0].name, "DevOps Prod Scenario");
+
+    // Delete scenario
+    service.execute(Command::DeleteScenario { id: "scen-1".to_string() }).unwrap();
+    assert_eq!(service.state().document.scenarios.len(), 0);
+}
+
+// 24. Document snapshots, diff branching, and rollback
+#[test]
+fn test_snapshot_history_diff_and_restore() {
+    let mut doc = PromptDocument::new("Architecture Blueprint", "Initial architectural specification");
+    let sec1 = PromptSection::new("role", "Principal Architect").unwrap();
+    let sec2 = PromptSection::new("task", "Draft distributed consensus architecture").unwrap();
+    doc.add_section(sec1).unwrap();
+    doc.add_section(sec2).unwrap();
+
+    let mut service = ApplicationService::new(doc);
+
+    // Create named snapshot v1.0
+    service
+        .execute(Command::CreateSnapshot {
+            name: "v1.0 Baseline".to_string(),
+            description: Some("Initial release milestone".to_string()),
+        })
+        .unwrap();
+
+    assert_eq!(service.state().document.snapshots.len(), 1);
+    let snapshot_id = service.state().document.snapshots[0].id.clone();
+
+    // Modify document: edit task, add constraints, rename title
+    let task_id = service.state().document.sections[1].id;
+    service
+        .execute(Command::UpdateTitle {
+            title: "Architecture Blueprint v2".to_string(),
+        })
+        .unwrap();
+    service
+        .execute(Command::UpdateBrief {
+            id: task_id,
+            text: "Draft Raft consensus engine with log compaction".to_string(),
+        })
+        .unwrap();
+    service
+        .execute(Command::AddSection {
+            tag: "constraints".to_string(),
+            brief: "Zero unsafe blocks allowed".to_string(),
+        })
+        .unwrap();
+
+    // Compare active document with snapshot v1.0
+    let snapshot = &service.state().document.snapshots[0];
+    let comparison = prompt_core::compare_document_with_snapshot(&service.state().document, snapshot);
+
+    assert!(comparison.is_title_changed);
+    assert_eq!(comparison.snapshot_title, "Architecture Blueprint");
+    assert_eq!(comparison.current_title, "Architecture Blueprint v2");
+
+    // Section diffs
+    // Role: Unchanged
+    // Task: Modified
+    // Constraints: Added
+    let role_diff = comparison.section_diffs.iter().find(|d| d.tag == "role").unwrap();
+    assert_eq!(role_diff.status, prompt_core::SectionDiffStatus::Unchanged);
+
+    let task_diff = comparison.section_diffs.iter().find(|d| d.tag == "task").unwrap();
+    assert_eq!(task_diff.status, prompt_core::SectionDiffStatus::Modified);
+
+    let constr_diff = comparison.section_diffs.iter().find(|d| d.tag == "constraints").unwrap();
+    assert_eq!(constr_diff.status, prompt_core::SectionDiffStatus::Added);
+
+    // Restore snapshot v1.0
+    service
+        .execute(Command::RestoreSnapshot {
+            id: snapshot_id.clone(),
+        })
+        .unwrap();
+
+    assert_eq!(service.state().document.title, "Architecture Blueprint");
+    assert_eq!(service.state().document.sections.len(), 2);
+    assert_eq!(
+        service.state().document.sections[1].brief,
+        "Draft distributed consensus architecture"
+    );
+
+    // Verify undo works on snapshot restore!
+    service.execute(Command::Undo).unwrap();
+    assert_eq!(service.state().document.title, "Architecture Blueprint v2");
+    assert_eq!(service.state().document.sections.len(), 3);
+
+    // Delete snapshot
+    service
+        .execute(Command::DeleteSnapshot { id: snapshot_id })
+        .unwrap();
+    assert_eq!(service.state().document.snapshots.len(), 0);
+}
+
+

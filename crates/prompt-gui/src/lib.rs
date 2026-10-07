@@ -67,6 +67,10 @@ pub fn run_gui(initial_file: Option<PathBuf>) -> anyhow::Result<()> {
             save_to_library,
             load_from_library,
             delete_from_library,
+            get_document_variables,
+            render_scenario_preview,
+            compare_snapshot,
+            fork_snapshot,
         ])
         .run(tauri::generate_context!())
         .map_err(|e| anyhow::anyhow!("Tauri runtime error: {e}"))

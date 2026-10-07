@@ -45,6 +45,16 @@ pub enum Command {
     ApplyAllRefinements,
     /// Reject all pending proposed refinements.
     RejectAllRefinements,
+    /// Add or update a test scenario for variable simulation.
+    SaveScenario { scenario: prompt_core::TestScenario },
+    /// Remove a test scenario by ID.
+    DeleteScenario { id: String },
+    /// Create a named snapshot of the current document state.
+    CreateSnapshot { name: String, description: Option<String> },
+    /// Restore a named snapshot by ID into the active document.
+    RestoreSnapshot { id: String },
+    /// Delete a snapshot by ID.
+    DeleteSnapshot { id: String },
     /// Undo the last discrete operation.
     Undo,
     /// Redo the last undone operation.

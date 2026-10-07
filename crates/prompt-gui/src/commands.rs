@@ -1,8 +1,9 @@
 use prompt_application::{ApplicationService, Command, PendingRefinements, ProposedSectionChange};
 use prompt_core::{
-    generate_skill_markdown, import_prompt_from_text, render_xml, ALL_PRESETS, ALL_TEMPLATES,
-    ImportFormat, PromptDocument, PromptSection, RenderOptions, RenderStage, SectionPreset,
-    SkillExportOptions, StarterTemplate,
+    calculate_prompt_telemetry, compare_document_with_snapshot, extract_document_variables,
+    generate_skill_markdown, import_prompt_from_text, render_interpolated_xml, render_xml,
+    ALL_PRESETS, ALL_TEMPLATES, ImportFormat, PromptDocument, PromptSection, RenderOptions,
+    RenderStage, SectionPreset, SkillExportOptions, SnapshotComparison, StarterTemplate,
 };
 use prompt_persistence::{
     delete_from_library as delete_doc_from_lib, export_skill, export_text, list_saved_prompts,
@@ -13,6 +14,7 @@ use prompt_refinement::{
     compute_line_diff, DiffLine, OpenAiCompatibleProvider, RefinementEngine, RefinementMode,
 };
 use serde::Serialize;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use tauri::State;
@@ -547,4 +549,117 @@ pub fn delete_from_library(id: String, _state: State<AppState>) -> Result<(), St
     delete_doc_from_lib(&library_dir, &id).map_err(|e| e.to_string())?;
     Ok(())
 }
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ScenarioPreviewDto {
+    pub rendered_xml: String,
+    pub char_count: usize,
+    pub word_count: usize,
+    pub estimated_tokens: usize,
+    pub all_variables: Vec<String>,
+    pub unresolved_variables: Vec<String>,
+}
+
+#[tauri::command]
+pub fn get_document_variables(state: State<AppState>) -> Vec<String> {
+    let service = state.service.lock().unwrap();
+    extract_document_variables(service.document())
+}
+
+#[tauri::command]
+pub fn render_scenario_preview(
+    scenario_id: Option<String>,
+    custom_values: Option<HashMap<String, String>>,
+    stage: String,
+    clean: bool,
+    state: State<AppState>,
+) -> Result<ScenarioPreviewDto, String> {
+    let service = state.service.lock().unwrap();
+    let doc = service.document();
+    let all_variables = extract_document_variables(doc);
+
+    let mut values = HashMap::new();
+    if let Some(ref sc_id) = scenario_id {
+        if let Some(scenario) = doc.scenarios.iter().find(|s| s.id == *sc_id) {
+            for (k, v) in &scenario.variables {
+                values.insert(k.clone(), v.clone());
+            }
+        }
+    }
+    if let Some(custom) = custom_values {
+        for (k, v) in custom {
+            values.insert(k, v);
+        }
+    }
+
+    let render_stage = match stage.to_lowercase().as_str() {
+        "final" => RenderStage::Final,
+        _ => RenderStage::Draft,
+    };
+    let options = RenderOptions {
+        stage: render_stage,
+        include_ids: !clean,
+        pretty: true,
+    };
+
+    let rendered_xml = render_interpolated_xml(doc, options, &values).map_err(|e| e.to_string())?;
+    let (char_count, word_count, estimated_tokens) = calculate_prompt_telemetry(&rendered_xml);
+
+    let unresolved_variables = all_variables
+        .iter()
+        .filter(|v| {
+            !values.contains_key(*v) || values.get(*v).map(|s| s.trim().is_empty()).unwrap_or(true)
+        })
+        .cloned()
+        .collect();
+
+    Ok(ScenarioPreviewDto {
+        rendered_xml,
+        char_count,
+        word_count,
+        estimated_tokens,
+        all_variables,
+        unresolved_variables,
+    })
+}
+
+#[tauri::command]
+pub fn compare_snapshot(
+    snapshot_id: String,
+    state: State<AppState>,
+) -> Result<SnapshotComparison, String> {
+    let service = state.service.lock().unwrap();
+    let doc = service.document();
+    let snapshot = doc
+        .snapshots
+        .iter()
+        .find(|s| s.id == snapshot_id)
+        .ok_or_else(|| format!("Snapshot '{snapshot_id}' not found"))?;
+
+    Ok(compare_document_with_snapshot(doc, snapshot))
+}
+
+#[tauri::command]
+pub fn fork_snapshot(
+    snapshot_id: String,
+    new_title: String,
+    state: State<AppState>,
+) -> Result<DocumentStateDto, String> {
+    let mut service = state.service.lock().unwrap();
+    let snapshot = service
+        .document()
+        .snapshots
+        .iter()
+        .find(|s| s.id == snapshot_id)
+        .cloned()
+        .ok_or_else(|| format!("Snapshot '{snapshot_id}' not found"))?;
+
+    let mut new_doc = PromptDocument::new(new_title, &service.document().description);
+    new_doc.sections = snapshot.sections;
+    service.load_document(new_doc, None);
+    drop(service);
+
+    Ok(state.to_dto())
+}
+
 

@@ -7,8 +7,10 @@ import type {
   ImportFileContent,
   ImportPreviewDto,
   SavedPromptSummary,
+  ScenarioPreviewDto,
   SectionPreset,
   SectionType,
+  SnapshotComparison,
   StarterTemplate,
 } from './types';
 
@@ -412,6 +414,38 @@ export const api = {
     } else if (command.type === 'ClearRefinement') {
       const sec = mockState.document.sections.find((s) => s.id === command.id);
       if (sec) sec.refined = null;
+    } else if (command.type === 'SaveScenario') {
+      if (!mockState.document.scenarios) mockState.document.scenarios = [];
+      const idx = mockState.document.scenarios.findIndex((s) => s.id === command.scenario.id);
+      if (idx !== -1) {
+        mockState.document.scenarios[idx] = command.scenario;
+      } else {
+        mockState.document.scenarios.push(command.scenario);
+      }
+    } else if (command.type === 'DeleteScenario') {
+      if (mockState.document.scenarios) {
+        mockState.document.scenarios = mockState.document.scenarios.filter((s) => s.id !== command.id);
+      }
+    } else if (command.type === 'CreateSnapshot') {
+      if (!mockState.document.snapshots) mockState.document.snapshots = [];
+      mockState.document.snapshots.push({
+        id: crypto.randomUUID ? crypto.randomUUID() : `snap-${Date.now()}`,
+        name: command.name,
+        description: command.description,
+        created_at: new Date().toISOString(),
+        title: mockState.document.title,
+        sections: JSON.parse(JSON.stringify(mockState.document.sections)),
+      });
+    } else if (command.type === 'RestoreSnapshot') {
+      const snap = mockState.document.snapshots?.find((s) => s.id === command.id);
+      if (snap) {
+        mockState.document.title = snap.title;
+        mockState.document.sections = JSON.parse(JSON.stringify(snap.sections));
+      }
+    } else if (command.type === 'DeleteSnapshot') {
+      if (mockState.document.snapshots) {
+        mockState.document.snapshots = mockState.document.snapshots.filter((s) => s.id !== command.id);
+      }
     }
     return JSON.parse(JSON.stringify(mockState));
   },
@@ -844,6 +878,78 @@ ${mockState.document.sections.map(s => `  <${s.tag}>\n    ${s.brief}\n  </${s.ta
       return invoke<void>('delete_from_library', { id });
     }
     console.log(`Mock deleted prompt ${id} from library`);
+  },
+
+  async getDocumentVariables(): Promise<string[]> {
+    if (isTauri()) {
+      return invoke<string[]>('get_document_variables');
+    }
+    const vars = new Set<string>();
+    for (const s of mockState.document.sections) {
+      const matches = s.brief.match(/\{\{([^}]+)\}\}/g);
+      if (matches) {
+        for (const m of matches) {
+          vars.add(m.replace(/[{}]/g, '').trim());
+        }
+      }
+    }
+    return Array.from(vars);
+  },
+
+  async renderScenarioPreview(
+    scenarioId?: string,
+    customValues?: Record<string, string>,
+    stage = 'final',
+    clean = false
+  ): Promise<ScenarioPreviewDto> {
+    if (isTauri()) {
+      return invoke<ScenarioPreviewDto>('render_scenario_preview', {
+        scenarioId: scenarioId || null,
+        customValues: customValues || null,
+        stage,
+        clean,
+      });
+    }
+    const xml = `<prompt>\n  <role>Mock Scenario Render</role>\n</prompt>`;
+    return {
+      rendered_xml: xml,
+      char_count: xml.length,
+      word_count: 5,
+      estimated_tokens: 12,
+      all_variables: ['user_query', 'target_platform'],
+      unresolved_variables: [],
+    };
+  },
+
+  async compareSnapshot(snapshotId: string): Promise<SnapshotComparison> {
+    if (isTauri()) {
+      return invoke<SnapshotComparison>('compare_snapshot', { snapshotId });
+    }
+    return {
+      snapshot_id: snapshotId,
+      snapshot_name: 'v1.0 Baseline',
+      snapshot_title: 'Original Title',
+      current_title: mockState.document.title,
+      is_title_changed: false,
+      section_diffs: [
+        {
+          tag: 'role',
+          status: 'unchanged',
+          snapshot_brief: 'Senior Engineer',
+          current_brief: 'Senior Engineer',
+        },
+      ],
+    };
+  },
+
+  async forkSnapshot(snapshotId: string, newTitle: string): Promise<DocumentStateDto> {
+    if (isTauri()) {
+      return invoke<DocumentStateDto>('fork_snapshot', { snapshotId, newTitle });
+    }
+    mockState.document.title = newTitle;
+    mockState.current_file_path = null;
+    mockState.dirty = true;
+    return JSON.parse(JSON.stringify(mockState));
   },
 };
 

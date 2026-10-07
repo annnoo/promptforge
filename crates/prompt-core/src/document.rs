@@ -6,6 +6,9 @@ use uuid::Uuid;
 
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 
+use crate::snapshot::DocumentSnapshot;
+use crate::variables::TestScenario;
+
 /// A PromptForge prompt document containing metadata and an ordered list of structured sections.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PromptDocument {
@@ -19,6 +22,12 @@ pub struct PromptDocument {
     pub description: String,
     /// Ordered list of prompt sections.
     pub sections: Vec<PromptSection>,
+    /// Test scenarios for variable interpolation.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub scenarios: Vec<TestScenario>,
+    /// Historical named snapshots / revisions.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub snapshots: Vec<DocumentSnapshot>,
 }
 
 impl Default for PromptDocument {
@@ -36,6 +45,8 @@ impl PromptDocument {
             title: title.into(),
             description: description.into(),
             sections: Vec::new(),
+            scenarios: Vec::new(),
+            snapshots: Vec::new(),
         }
     }
 

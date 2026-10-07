@@ -14,6 +14,8 @@ import {
   BookOpen,
   Upload,
   Share2,
+  Variable,
+  History,
 } from 'lucide-react';
 import type { DocumentStateDto } from '../types';
 
@@ -30,6 +32,8 @@ interface HeaderProps {
   onOpenLibrary: () => void;
   onOpenImport: () => void;
   onOpenExportSkill: () => void;
+  onOpenVariables: () => void;
+  onOpenHistory: () => void;
   onOpenRefine: () => void;
   onOpenReview: () => void;
   onOpenSettings: () => void;
@@ -48,6 +52,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenLibrary,
   onOpenImport,
   onOpenExportSkill,
+  onOpenVariables,
+  onOpenHistory,
   onOpenRefine,
   onOpenReview,
   onOpenSettings,
@@ -85,6 +91,9 @@ export const Header: React.FC<HeaderProps> = ({
   const pendingCount =
     (state.pending_refinements?.changes.length || 0) +
     (state.pending_refinements?.suggested_sections.length || 0);
+
+  const scenarioCount = state.document.scenarios?.length || 0;
+  const snapshotCount = state.document.snapshots?.length || 0;
 
   return (
     <header className="h-14 border-b border-slate-800 bg-slate-900/95 backdrop-blur-md px-4 flex items-center justify-between select-none z-20 shrink-0">
@@ -264,6 +273,34 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <Share2 className="w-3.5 h-3.5 text-violet-400" />
           <span className="hidden md:inline">Skill</span>
+        </button>
+
+        <button
+          onClick={onOpenVariables}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700/60 transition"
+          title="Dynamic Variables & Scenario Matrix (Interpolation & Telemetry)"
+        >
+          <Variable className="w-3.5 h-3.5 text-cyan-400" />
+          <span className="hidden md:inline">Variables</span>
+          {scenarioCount > 0 && (
+            <span className="ml-0.5 px-1.5 py-0.2 text-[10px] bg-slate-700 text-slate-300 rounded-full font-mono">
+              {scenarioCount}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={onOpenHistory}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700/60 transition"
+          title="Prompt Revision History & Visual Diff Branching"
+        >
+          <History className="w-3.5 h-3.5 text-amber-400" />
+          <span className="hidden md:inline">History</span>
+          {snapshotCount > 0 && (
+            <span className="ml-0.5 px-1.5 py-0.2 text-[10px] bg-slate-700 text-slate-300 rounded-full font-mono">
+              {snapshotCount}
+            </span>
+          )}
         </button>
 
         {/* Review Changes button (if pending) */}

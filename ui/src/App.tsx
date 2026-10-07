@@ -15,6 +15,7 @@ import type {
   DocumentStateDto,
   SectionType,
   StarterTemplate,
+  TestScenario,
 } from './types';
 import { api } from './api';
 import { Header } from './components/Header';
@@ -29,6 +30,8 @@ import { CreateTypeModal } from './components/CreateTypeModal';
 import { ExportSkillModal } from './components/ExportSkillModal';
 import { ImportPromptModal } from './components/ImportPromptModal';
 import { PromptLibraryModal } from './components/PromptLibraryModal';
+import { VariablePlaygroundDrawer } from './components/VariablePlaygroundDrawer';
+import { RevisionHistoryModal } from './components/RevisionHistoryModal';
 import { TagBadge } from './components/TagBadge';
 
 interface ToastInfo {
@@ -52,6 +55,8 @@ export const App: React.FC = () => {
   const [isExportSkillModalOpen, setIsExportSkillModalOpen] = useState(false);
   const [isImportPromptModalOpen, setIsImportPromptModalOpen] = useState(false);
   const [isPromptLibraryModalOpen, setIsPromptLibraryModalOpen] = useState(false);
+  const [isVariablesDrawerOpen, setIsVariablesDrawerOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [editingType, setEditingType] = useState<SectionType | null>(null);
 
   // Filter sections by tag on canvas
@@ -319,12 +324,72 @@ export const App: React.FC = () => {
         setIsSettingsModalOpen(false);
         setIsNewDocModalOpen(false);
         setIsCreateTypeModalOpen(false);
+        setIsExportSkillModalOpen(false);
+        setIsImportPromptModalOpen(false);
+        setIsPromptLibraryModalOpen(false);
+        setIsVariablesDrawerOpen(false);
+        setIsHistoryModalOpen(false);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [docState, exec, handleOpen, handleSave]);
+
+  const handleSaveScenario = useCallback(
+    async (scenario: TestScenario) => {
+      await exec({ type: 'SaveScenario', scenario });
+      showToast(`Saved test scenario "${scenario.name}"`, 'success');
+    },
+    [exec, showToast]
+  );
+
+  const handleDeleteScenario = useCallback(
+    async (id: string) => {
+      await exec({ type: 'DeleteScenario', id });
+      showToast('Deleted test scenario', 'info');
+    },
+    [exec, showToast]
+  );
+
+  const handleCreateSnapshot = useCallback(
+    async (name: string, description?: string | null) => {
+      await exec({ type: 'CreateSnapshot', name, description: description || null });
+      showToast(`Created snapshot "${name}"`, 'success');
+    },
+    [exec, showToast]
+  );
+
+  const handleRestoreSnapshot = useCallback(
+    async (snapshotId: string) => {
+      await exec({ type: 'RestoreSnapshot', id: snapshotId });
+      showToast('Restored snapshot successfully', 'success');
+    },
+    [exec, showToast]
+  );
+
+  const handleDeleteSnapshot = useCallback(
+    async (snapshotId: string) => {
+      await exec({ type: 'DeleteSnapshot', id: snapshotId });
+      showToast('Deleted snapshot', 'info');
+    },
+    [exec, showToast]
+  );
+
+  const handleForkSnapshot = useCallback(
+    async (snapshotId: string, newTitle: string) => {
+      try {
+        const nextState = await api.forkSnapshot(snapshotId, newTitle);
+        setDocState(nextState);
+        setIsHistoryModalOpen(false);
+        showToast(`Forked snapshot into new prompt "${newTitle}"`, 'success');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        showToast('Fork failed: ' + msg, 'error');
+      }
+    },
+    [showToast]
+  );
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(`section-${id}`);
@@ -369,6 +434,8 @@ export const App: React.FC = () => {
         onOpenLibrary={() => setIsPromptLibraryModalOpen(true)}
         onOpenImport={() => setIsImportPromptModalOpen(true)}
         onOpenExportSkill={() => setIsExportSkillModalOpen(true)}
+        onOpenVariables={() => setIsVariablesDrawerOpen(true)}
+        onOpenHistory={() => setIsHistoryModalOpen(true)}
         onOpenRefine={() => setIsRefineModalOpen(true)}
         onOpenReview={() => setIsDiffReviewModalOpen(true)}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
@@ -589,6 +656,25 @@ export const App: React.FC = () => {
         }}
         onSaveCurrentToLibrary={handleSaveCurrentToLibrary}
         customColors={config?.tag_colors}
+      />
+
+      <VariablePlaygroundDrawer
+        isOpen={isVariablesDrawerOpen}
+        onClose={() => setIsVariablesDrawerOpen(false)}
+        docState={docState}
+        onSaveScenario={handleSaveScenario}
+        onDeleteScenario={handleDeleteScenario}
+        customColors={config?.tag_colors}
+      />
+
+      <RevisionHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        docState={docState}
+        onCreateSnapshot={handleCreateSnapshot}
+        onRestoreSnapshot={handleRestoreSnapshot}
+        onDeleteSnapshot={handleDeleteSnapshot}
+        onForkSnapshot={handleForkSnapshot}
       />
 
       {/* 4. Global Toast Notifications */}

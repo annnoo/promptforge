@@ -8,12 +8,30 @@ export interface PromptSection {
   tags?: string[];
 }
 
+export interface TestScenario {
+  id: string;
+  name: string;
+  description?: string | null;
+  variables: Record<string, string>;
+}
+
+export interface DocumentSnapshot {
+  id: string;
+  name: string;
+  description?: string | null;
+  created_at: string;
+  title: string;
+  sections: PromptSection[];
+}
+
 export interface PromptDocument {
   schema_version: number;
   id: string;
   title: string;
   description: string;
   sections: PromptSection[];
+  scenarios?: TestScenario[];
+  snapshots?: DocumentSnapshot[];
 }
 
 export interface ProposedSectionChange {
@@ -114,6 +132,33 @@ export interface SavedPromptSummary {
   updated_at: string;
 }
 
+export interface ScenarioPreviewDto {
+  rendered_xml: string;
+  char_count: number;
+  word_count: number;
+  estimated_tokens: number;
+  all_variables: string[];
+  unresolved_variables: string[];
+}
+
+export type SectionDiffStatus = 'added' | 'removed' | 'modified' | 'unchanged';
+
+export interface SectionDiffSummary {
+  tag: string;
+  status: SectionDiffStatus;
+  snapshot_brief?: string | null;
+  current_brief?: string | null;
+}
+
+export interface SnapshotComparison {
+  snapshot_id: string;
+  snapshot_name: string;
+  snapshot_title: string;
+  current_title: string;
+  is_title_changed: boolean;
+  section_diffs: SectionDiffSummary[];
+}
+
 export type DiffTag = 'Equal' | 'Delete' | 'Insert';
 
 export interface DiffLine {
@@ -142,5 +187,10 @@ export type Command =
   | { type: 'RejectRefinement'; id: string }
   | { type: 'ApplyAllRefinements' }
   | { type: 'RejectAllRefinements' }
+  | { type: 'SaveScenario'; scenario: TestScenario }
+  | { type: 'DeleteScenario'; id: string }
+  | { type: 'CreateSnapshot'; name: string; description?: string | null }
+  | { type: 'RestoreSnapshot'; id: string }
+  | { type: 'DeleteSnapshot'; id: string }
   | { type: 'Undo' }
   | { type: 'Redo' };
