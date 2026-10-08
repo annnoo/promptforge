@@ -47,6 +47,7 @@ pub fn run_gui(initial_file: Option<PathBuf>) -> anyhow::Result<()> {
             generate_manual_request,
             apply_manual_response,
             execute_automated_refinement,
+            test_ai_connection,
             accept_refinement,
             reject_refinement,
             accept_all_refinements,

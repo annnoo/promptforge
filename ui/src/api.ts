@@ -6,6 +6,7 @@ import type {
   DocumentStateDto,
   ImportFileContent,
   ImportPreviewDto,
+  OpenAiCompatibleConfig,
   SavedPromptSummary,
   ScenarioPreviewDto,
   SectionPreset,
@@ -574,6 +575,17 @@ export const api = {
       return invoke<void>('save_config', { config });
     }
     mockConfig = JSON.parse(JSON.stringify(config));
+  },
+
+  async testAiConnection(config: OpenAiCompatibleConfig): Promise<string> {
+    if (isTauri()) {
+      return invoke<string>('test_ai_connection', { config });
+    }
+    await new Promise((r) => setTimeout(r, 600));
+    if (config.base_url.includes('invalid')) {
+      throw new Error('Could not resolve host name (mock connection error)');
+    }
+    return `Successfully connected to endpoint! Model '${config.model}' is ready.`;
   },
 
   async generateManualRequest(mode: string): Promise<string> {

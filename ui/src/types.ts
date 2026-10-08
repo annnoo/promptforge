@@ -94,6 +94,8 @@ export interface OpenAiCompatibleConfig {
   base_url: string;
   model: string;
   api_key_env_var: string;
+  api_key?: string | null;
+  preset?: string | null;
   timeout_seconds: number;
 }
 

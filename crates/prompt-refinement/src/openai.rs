@@ -14,6 +14,7 @@ pub struct OpenAiCompatibleProvider {
     pub base_url: String,
     pub model: String,
     pub api_key_env_var: String,
+    pub api_key: Option<String>,
     pub timeout_seconds: u64,
 }
 
@@ -28,13 +29,96 @@ impl OpenAiCompatibleProvider {
             base_url: base_url.into(),
             model: model.into(),
             api_key_env_var: api_key_env_var.into(),
+            api_key: None,
+            timeout_seconds: if timeout_seconds == 0 { 60 } else { timeout_seconds },
+        }
+    }
+
+    pub fn with_api_key(
+        base_url: impl Into<String>,
+        model: impl Into<String>,
+        api_key_env_var: impl Into<String>,
+        api_key: Option<String>,
+        timeout_seconds: u64,
+    ) -> Self {
+        Self {
+            base_url: base_url.into(),
+            model: model.into(),
+            api_key_env_var: api_key_env_var.into(),
+            api_key,
             timeout_seconds: if timeout_seconds == 0 { 60 } else { timeout_seconds },
         }
     }
 
     fn resolve_api_key(&self) -> Result<String, RefinementError> {
-        std::env::var(&self.api_key_env_var)
-            .map_err(|_| RefinementError::MissingApiKey(self.api_key_env_var.clone()))
+        if let Some(ref key) = self.api_key {
+            if !key.trim().is_empty() {
+                return Ok(key.trim().to_string());
+            }
+        }
+
+        if let Ok(key) = std::env::var(&self.api_key_env_var) {
+            if !key.trim().is_empty() {
+                return Ok(key.trim().to_string());
+            }
+        }
+
+        // Local Ollama / LM Studio endpoints don't strictly require an API key
+        if self.base_url.contains("localhost") || self.base_url.contains("127.0.0.1") {
+            return Ok("ollama-local".to_string());
+        }
+
+        Err(RefinementError::MissingApiKey(self.api_key_env_var.clone()))
+    }
+
+    pub async fn test_connection(&self) -> Result<String, RefinementError> {
+        let api_key = self.resolve_api_key()?;
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(self.timeout_seconds.min(15)))
+            .build()?;
+
+        let url = if self.base_url.ends_with("/chat/completions") {
+            self.base_url.clone()
+        } else if self.base_url.ends_with('/') {
+            format!("{}chat/completions", self.base_url)
+        } else {
+            format!("{}/chat/completions", self.base_url)
+        };
+
+        let request_payload = ChatCompletionRequest {
+            model: self.model.clone(),
+            messages: vec![ChatMessage {
+                role: "user".into(),
+                content: "ping".into(),
+            }],
+            temperature: 0.0,
+            response_format: ResponseFormat {
+                format_type: "text".into(),
+            },
+        };
+
+        let response = client
+            .post(&url)
+            .bearer_auth(api_key)
+            .json(&request_payload)
+            .send()
+            .await?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Failed to read response body".into());
+            return Err(RefinementError::ProviderError(format!(
+                "API returned HTTP {status}: {error_text}"
+            )));
+        }
+
+        Ok(format!(
+            "Successfully connected! Model '{}' is responsive.",
+            self.model
+        ))
     }
 }
 

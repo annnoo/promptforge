@@ -247,6 +247,23 @@ pub fn apply_manual_response(response_text: String, state: State<AppState>) -> R
 }
 
 #[tauri::command]
+pub async fn test_ai_connection(
+    config: prompt_persistence::OpenAiCompatibleConfig,
+) -> Result<String, String> {
+    let provider = OpenAiCompatibleProvider::with_api_key(
+        config.base_url,
+        config.model,
+        config.api_key_env_var,
+        config.api_key,
+        config.timeout_seconds,
+    );
+    provider
+        .test_connection()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn execute_automated_refinement(
     mode: String,
     state: State<'_, AppState>,
@@ -262,10 +279,11 @@ pub async fn execute_automated_refinement(
         (service.document().clone(), config.openai_compatible.clone(), m)
     };
 
-    let provider = OpenAiCompatibleProvider::new(
+    let provider = OpenAiCompatibleProvider::with_api_key(
         cfg.base_url,
         cfg.model,
         cfg.api_key_env_var,
+        cfg.api_key,
         cfg.timeout_seconds,
     );
     let engine = RefinementEngine::new();

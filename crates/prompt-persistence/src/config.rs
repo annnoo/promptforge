@@ -19,6 +19,10 @@ pub struct OpenAiCompatibleConfig {
     pub base_url: String,
     pub model: String,
     pub api_key_env_var: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preset: Option<String>,
     pub timeout_seconds: u64,
 }
 
@@ -28,6 +32,8 @@ impl Default for OpenAiCompatibleConfig {
             base_url: "https://api.openai.com/v1".to_string(),
             model: "gpt-4o".to_string(),
             api_key_env_var: "OPENAI_API_KEY".to_string(),
+            api_key: None,
+            preset: Some("openai".to_string()),
             timeout_seconds: 60,
         }
     }
